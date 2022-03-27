@@ -6,25 +6,6 @@ import pandas as pd
 
 ########## LOADING FILES ##########
 
-"""
-# ----- exécuter requête sql
-
-\i documents/technical_test_CodaBene/sql_exo/create_db.sql
-
-\l -> pour vérifier la création
-
-# ----- pour importer un fichier csv (se placer dans le répertoire contenant ce ficier)
-
-\! pwd  	= pour afficher le pwd
-
-\cd documents/technical_test_CodaBene/data
-
-\copy initialized_products FROM 'references_initialized_in_shop.csv' WITH CSV HEADER DELIMITER  ';' QUOTE '"'
-\copy store_products FROM 'new_retailer_extract.csv' WITH CSV HEADER DELIMITER  ';' QUOTE '"'
-
-
-"""
-
 #  all the products present in the shop
 store_df = pd.read_csv("documents/technical_test_CodaBene/data/retailer_extract.csv", sep=";", decimal=",", parse_dates=[21, 22], dayfirst=True, low_memory=False)
 
@@ -39,6 +20,7 @@ eg of query
 store_df[store_df.Quantite_vendue==1]
 store_df.query("Quantite_vendue==1")
 
+store_df[store_df.Libelle_Groupe_de_Famille=='CHARCUTERIE']
 """
 
 # ----- store_df ----- #
@@ -136,7 +118,7 @@ df["allee"].isna().sum()  # 36055
 # ----- products are in the shop but not tracked  =  << 36055 >>
 
 untracked = df[df["reference_id"].isna()]  # = df.query("EAN != reference_id")
-untracked = untracked[["EAN", "Libelle_Sous_Famille", "Article_Libelle_Long", "Date_deref"]]
+untracked = untracked[["EAN", "Libelle_Sous_Famille", "Libelle_Groupe_de_Famille", "Date_deref"]]
 
 untracked.shape[0]  # 36055
 
@@ -152,7 +134,9 @@ untracked.shape[0]  # 36055
 
 referenced_untracked = untracked[untracked["Date_deref"].isna()==False]
 
-referenced_untracked = referenced_untracked[["EAN", "Libelle_Sous_Famille", "Article_Libelle_Long"]]
+referenced_untracked = referenced_untracked[["EAN", "Libelle_Groupe_de_Famille", "Libelle_Sous_Famille"]]
+
+referenced_untracked.info()
 
 
 l_relevant = []
@@ -163,24 +147,28 @@ for l in range(referenced_untracked.shape[0]):
         ll.append(referenced_untracked.iloc[l,c])
     l_relevant.append(ll)
 
-print(len(l_relevant))
+print(len(l_relevant))  # 13039
 
 
 # ----- tracked products
 
+
 tracked = df[df["reference_id"].isna()==False]
 
-tracked = tracked[["EAN", "Libelle_Sous_Famille", "Article_Libelle_Long"]]
+tracked = tracked[["EAN", "Libelle_Sous_Famille", "Libelle_Groupe_de_Famille"]]
 tracked.shape[0]  # 3225
 
 
+
 # ----- untracked products for which Libelle Sous-Famille is tracked in at least one aisle
+
 
 df2 = pd.merge(untracked, tracked, how="left", right_on="Libelle_Sous_Famille", left_on="Libelle_Sous_Famille")
 
 df2.info()
 
 df2 = df2[(df2.EAN_y.isna()==False)]
+
 
 del df2["Date_deref"]
 df2 = df2.drop_duplicates()
@@ -189,36 +177,106 @@ df2["Libelle_Sous_Famille"].unique().size  # 193
 np.intersect1d(untracked["Libelle_Sous_Famille"], tracked["Libelle_Sous_Famille"]).size  # 193
 
 
+# list of Libelle_Sous_Famille of relevant products
 lsf = list(df2["Libelle_Sous_Famille"].unique())
-xx=[]
-i=0
+
+
+# it takes a little time
 for l in range(df2.shape[0]):
     lx, ly = [], []
     if df2.iloc[l, 1] in lsf:
-        i=i+1
         lx.append(df2.iloc[l, 0])
         lx.append(df2.iloc[l, 2])
-        if lx not in xx:
-            xx.append(lx)
+        lx.append(df2.iloc[l, 1])
+        if lx not in l_relevant:
+            l_relevant.append(lx)
 
         ly.append(df2.iloc[l, 3])
         ly.append(df2.iloc[l, 4])
-        if ly not in xx:
-            xx.append(ly)
+        ly.append(df2.iloc[l, 1])
+        if ly not in l_relevant:
+            l_relevant.append(ly)
 
+
+
+# check that elements are unique
+lll = []
+for element in l_relevant:
+    if element not in lll:
+        lll.append(element)
+
+
+
+l_relevant = lll  # 31861
+len(l_relevant) # 31861
+
+
+
+# ----- eg of queries
 
 df2[df2.Libelle_Sous_Famille=='BRIES'].drop_duplicates().iloc[0:20, 2:4]
 df2[df2.Libelle_Sous_Famille=='BRIES'].iloc[0:20, 0:3]
 df2[df2.Libelle_Sous_Famille=='BRIES'].head(5)
 df2[df2.Libelle_Sous_Famille=='BRIES']["EAN_x"]
-# -----
 
-df2.drop_duplicates()
+
 
 ########## TOTAL SIZE OF RELEVANT PRODUCTS NOT TRACKED ##########
 
 
-store_df[store_df.Libelle_Groupe_de_Famille=='CHARCUTERIE']
+len(l_relevant) # 31861
 
 
-########## SUGGEST AN AISLE RELEVANT FOR PRODUCTS NOT TRACKED ##########
+########## SUGGEST AN AISLE FOR RELEVANT PRODUCTS NOT TRACKED ##########
+"""
+for each Libelle_Sous_Famille and Libelle_Groupe_de_Famille of the list of relevant products but not tracked, we examine the associated products and for all these products we will choose the aisle that comes up the most
+"""
+
+
+# ----- functions
+
+
+# split Libelle_Sous_Famille, Libelle_Groupe_de_Famille, allee to count occurrences
+# non-optimal method
+def find_lien(aisleX, gfX, sfX):
+    gfX = gfX.lower()
+    aisleX = aisleX.lower()
+    sfX = sfX.lower()
+    l_u = gfX.split(" ")
+    l_u.append(sfX.split(" "))
+    l_t = aisleX.split(" ")
+    occur = 0
+    for x in l_u:
+        for y in l_t:
+            if x in l_t or y in l_u or str(x).find(y) or str(y).find(x):
+                occur+=1
+    return occur
+
+
+# find the key associated with the value v in dico
+def find_key(v, dico):
+    for k, val in dico.items():
+        if v == val:
+            return k
+
+
+
+
+for i in range(len(l_relevant)):
+    gf = l_relevant[i][1]
+    sf = l_relevant[i][2]
+
+    dico = dict()
+    for id in tracked[tracked.Libelle_Groupe_de_Famille==gf].EAN:
+        aisle1 = initialized_df[initialized_df.reference_id==id]["allee"].iloc[0]
+        dico[id] = find_lien(aisle1, gf, sf)
+
+    for id in tracked[tracked.Libelle_Sous_Famille==sf].EAN:
+        aisle2 = initialized_df[initialized_df.reference_id==id]["allee"].iloc[0]
+        dico[id] = find_lien(aisle2, gf, sf)
+
+    occur_max = max(dico.values())
+    id_max = find_key(occur_max, dico)
+    aisle = initialized_df[initialized_df.reference_id==3176582003016]["allee"].iloc[0]
+
+    print(" Suggestion for product : %i => %s" % (l_relevant[i][0], aisle))
