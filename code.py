@@ -86,6 +86,7 @@ store_df = store_df.fillna(value={"Date_deref": ''})
 """
 store_df.to_csv('documents/technical_test_CodaBene/data/new_retailer_extract.csv', sep=";", decimal=",",  index=False)
 """
+
 # ----- initialized_df
 
 initialized_df.shape  # (6059, 4)
