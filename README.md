@@ -26,12 +26,18 @@ The questions refer to the same previous dataset.
 ############################################
 
 
+
+
+#### Python
+
+
 To be able to run the different programs, you must first clone this directory or otherwise replicate the architecture 
 of this directory with the same names (for folders and files) in your computer **Documents** folder.
 
 
 To run the python file, **go to the technical_test_CodaBene folder** and then run the command: **python code.py**
 
+Some parts have been commented out to reduce program execution time.
 
 
 #### SQL
