@@ -3,14 +3,18 @@
 
 import numpy as np
 import pandas as pd
+import os
 
 ########## LOADING FILES ##########
 
+# go to the folder if using a ide
+# os.chdir("Documents/technical_test_CodaBene")
+
 #  all the products present in the shop
-store_df = pd.read_csv("documents/technical_test_CodaBene/data/retailer_extract.csv", sep=";", decimal=",", parse_dates=[21, 22], dayfirst=True, low_memory=False)
+store_df = pd.read_csv("data/retailer_extract.csv", sep=";", decimal=",", parse_dates=[21, 22], dayfirst=True, low_memory=False)
 
 # products currently tracked by the app
-initialized_df = pd.read_csv("documents/technical_test_CodaBene/data/references_initialized_in_shop.csv", sep=";")
+initialized_df = pd.read_csv("data/references_initialized_in_shop.csv", sep=";")
 
 
 ########## BROWSE DATA FILES ##########
@@ -43,6 +47,7 @@ store_df["EAN"].unique().size  # 39136
 
 
 # ----- change date format
+
 
 def permute(ch):  # ch = jj/mm/aaaa
     if ch:
@@ -78,9 +83,9 @@ store_df = store_df.fillna(value={"Date_deref": ''})
 
 
 # ----- save in a csv file
-
+"""
 store_df.to_csv('documents/technical_test_CodaBene/data/new_retailer_extract.csv', sep=";", decimal=",",  index=False)
-
+"""
 # ----- initialized_df
 
 initialized_df.shape  # (6059, 4)
@@ -138,7 +143,7 @@ referenced_untracked = referenced_untracked[["EAN", "Libelle_Groupe_de_Famille",
 
 referenced_untracked.info()
 
-
+"""
 l_relevant = []
 
 for l in range(referenced_untracked.shape[0]):
@@ -148,7 +153,7 @@ for l in range(referenced_untracked.shape[0]):
     l_relevant.append(ll)
 
 print(len(l_relevant))  # 13039
-
+"""
 
 # ----- tracked products
 
@@ -180,7 +185,7 @@ np.intersect1d(untracked["Libelle_Sous_Famille"], tracked["Libelle_Sous_Famille"
 # list of Libelle_Sous_Famille of relevant products
 lsf = list(df2["Libelle_Sous_Famille"].unique())
 
-
+"""
 # it takes a little time
 for l in range(df2.shape[0]):
     lx, ly = [], []
@@ -209,7 +214,7 @@ for element in l_relevant:
 
 l_relevant = lll  # 31861
 len(l_relevant) # 31861
-
+"""
 
 
 # ----- eg of queries
@@ -224,7 +229,7 @@ df2[df2.Libelle_Sous_Famille=='BRIES']["EAN_x"]
 ########## TOTAL SIZE OF RELEVANT PRODUCTS NOT TRACKED ##########
 
 
-len(l_relevant) # 31861
+"""len(l_relevant) # 31861"""
 
 
 ########## SUGGEST AN AISLE FOR RELEVANT PRODUCTS NOT TRACKED ##########
@@ -260,8 +265,7 @@ def find_key(v, dico):
             return k
 
 
-
-
+"""
 for i in range(len(l_relevant)):
     gf = l_relevant[i][1]
     sf = l_relevant[i][2]
@@ -280,3 +284,4 @@ for i in range(len(l_relevant)):
     aisle = initialized_df[initialized_df.reference_id==3176582003016]["allee"].iloc[0]
 
     print(" Suggestion for product : %i => %s" % (l_relevant[i][0], aisle))
+"""
